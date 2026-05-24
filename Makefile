@@ -1,13 +1,15 @@
-# Basit ogrenci Makefile'i
 CC = gcc
 
-all: soru1 soru2
+EX  =  bin/soru1 \
+       bin/soru2
 
-soru1: soru1.c
-	$(CC) soru1.c -o soru1
+all: $(EX) 
 
-soru2: soru2.c
-	$(CC) soru2.c -o soru2
+clean: 
+	rm -f bin/*
 
-clean:
-	rm -f soru1 soru2
+bin/soru1: src/soru1.c
+	$(CC) -o bin/soru1 src/soru1.c
+
+bin/soru2: src/soru2.c
+	$(CC) -o bin/soru2 src/soru2.c

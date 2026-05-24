@@ -4,82 +4,97 @@
 #include <signal.h>
 #include <sys/types.h>
 
-int sayac = 1;
+// global değişkenler
+int sayac = 0;
 pid_t pid; 
 
-// sinyal yakalama kısmı
+// child sürecin sinyal yakalama fonksiyonu
 void child_sinyal_yakala(int sig) {
     if (sig == SIGINT) {
         printf("SIGINT alindi ancak devam ediliyor...\n");
     } 
     else if (sig == SIGCONT) {
-        printf("Islem devam etti\n");
+        printf("Cocuk: Islem yeniden baslatildi\n");
     }
 }
 
-// alarm gelince çalışacak yer
+// parent sürecin alarm gelince çalışacak fonksiyonu
 void parent_alarm_yakala(int sig) {
     if (sig == SIGALRM) {
-        // child process'i durduruyoruz
+        printf("Ebeveyn: Cocuk durduruluyor...\n");
+        // child'a SIGSTOP gönderip durduruyoruz
         kill(pid, SIGSTOP);
         
         // 2 saniye bekliyoruz
         sleep(2);
         
-        // tekrar devam ettiriyoruz
+        printf("Ebeveyn: Cocuk devam ediyor...\n");
+        // child'a SIGCONT gönderip tekrar başlatıyoruz
         kill(pid, SIGCONT);
         
-        // 3 saniye sonra tekrar alarm çalması için kuruyoruz
+        // sonraki alarm için tekrar kuruyoruz (3 saniye)
         alarm(3);
     }
 }
 
 int main() {
     
-    // fork ile child process yaratıyoruz
+    // fork ile çocuk süreç oluşturuyoruz
     pid = fork();
     
     if (pid < 0) {
-        printf("Fork hatasi!\n");
+        printf("Fork basarisiz oldu!\n");
         return 1;
     }
     
-    // çocuk süreç
+    // Child process kısmı
     if (pid == 0) {
-        // sinyalleri yakalayacağımız fonksiyonu signal ile atıyoruz
+        // child kendine gelen sinyalleri yakalayacak
         signal(SIGINT, child_sinyal_yakala);
         signal(SIGCONT, child_sinyal_yakala);
         
-        // sonsuz döngü
+        // sonsuz döngüde sayacı yazdırıyoruz
         while(1) {
-            printf("Sayac: %d\n", sayac);
+            printf("Cocuk sayaci: %d\n", sayac);
             sayac++;
-            sleep(1); // 1 saniye bekletiyoruz
+            sleep(1); // her saniye bir artıyor
         }
     } 
-    // ebeveyn süreç
+    // Parent process kısmı
     else {
-        // alarm sinyalini yakala
+        // parent alarm sinyalini yakalayacak
         signal(SIGALRM, parent_alarm_yakala);
         
-        // ilk alarmı 3 saniyeye kuruyoruz
+        // ilk alarmı kuruyoruz
         alarm(3);
         
-        // 10 saniye uyuyarak çalışmasını izliyoruz
+        // yaklaşık 10 saniye bekle
         sleep(10);
         
-        // süremiz doldu, SIGINT atıyoruz
+        // programı bitirmeden önce child'a SIGINT gönderiyoruz
+        printf("Ebeveyn: SIGINT gonderiliyor...\n");
         kill(pid, SIGINT);
         
-        // yazının çıkması için kısa bekleme
+        // mesajın gitmesi için azıcık bekleyelim
         sleep(1);
         
-        // en son tamamen sonlandırıp çıkıyoruz
+        // en son child'i tamamen sonlandırıyoruz (SIGKILL kullanarak öldürüyoruz)
         kill(pid, SIGKILL);
+        printf("Ebeveyn: Cocuk sonlandirildi.\n");
         
-        printf("Program bitti.\n");
         return 0;
     }
     
     return 0;
 }
+
+/*
+Bu kodun çalışma mantığı:
+Bu programda fork() ile bir ebeveyn (parent) ve bir çocuk (child) süreç oluşturduk. 
+Çocuk süreç sürekli çalışan bir döngüde kendi sayacını arttırıp ekrana basıyor.
+Ebeveyn süreç ise alarm() kurarak her 3 saniyede bir tetikleniyor. Alarm çalınca 
+çocuk sürece SIGSTOP atıp onu donduruyor, 2 saniye bekleyip SIGCONT atarak çözüyor. 
+Bu sırada çocuk süreç sinyal yakalayıcı (signal() ile bağladığımız) fonksiyonlarına 
+gidip gerekli yazıları basıyor. En sonunda ebeveyn yaklaşık 10 saniye dolduğunda 
+çocuğa SIGINT gönderiyor ve ardından süreci tamamen öldürüp programdan çıkıyor.
+*/
