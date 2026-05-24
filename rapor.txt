@@ -1,0 +1,102 @@
+====================================================================
+                            ÖDEV RAPORU
+====================================================================
+
+DERS ADI      : Linux Sistem Programlama
+ÖĞRENCİ ADI   : [Adınızı ve Soyadınızı Buraya Yazınız]
+ÖĞRENCİ NO    : [Öğrenci Numaranızı Buraya Yazınız]
+BÖLÜM         : [Bölümünüzü Buraya Yazınız]
+TARİH         : [Teslim Tarihi Buraya Yazılacak]
+
+====================================================================
+                           SORU 1 AÇIKLAMASI
+====================================================================
+Bu soruda bizden iki boyutlu bir matrisi tek boyutlu bir dizi olarak bellekte ayırmamız ve bu dizi üzerinde sadece pointer aritmetiği kullanarak işlem yapmamız istendi.
+
+Öncelikle malloc() kullanarak N*N boyutunda tek boyutlu bir dizi için yer ayırdım.
+Matrisin elemanlarına erişirken normalde kullandığımız mat[i][j] yapısını hiç kullanmadım.
+Bunun yerine adres hesabı olan *(mat + i*N + j) mantığını kullanarak dizideki yerlerini buldum.
+
+Döngü ile elemanları gezerken iç içe iki tane döngü kurmak yerine tek bir for döngüsü ile hem ana köşegeni (i, i) hem de yan köşegeni (i, N-1-i) topladım. Böylece program biraz daha hızlı (O(N) karmaşıklığında) çalışmış oldu.
+
+Eğer kullanıcının girdiği boyut (N) tek sayıysa, ortadaki eleman hem ana köşegende hem de yan köşegende olacağı için iki kere toplanmış oluyor. Bunu düzeltmek için döngü bittikten sonra ortadaki elemanı toplamdan bir defa çıkardım. Son olarak da bellek sızıntısı kalmaması için diziye free() işlemi uyguladım.
+
+Örnek Çıktı:
+Matris boyutu (N) giriniz (NxN icin): 3
+
+Lutfen 3x3 matrisin elemanlarini giriniz:
+Eleman [0][0]: 1
+Eleman [0][1]: 2
+Eleman [0][2]: 3
+Eleman [1][0]: 4
+Eleman [1][1]: 5
+Eleman [1][2]: 6
+Eleman [2][0]: 7
+Eleman [2][1]: 8
+Eleman [2][2]: 9
+
+Girilen Matris:
+1       2       3
+4       5       6
+7       8       9
+
+Ana ve Yan Kosegenlerin Toplami: 25
+
+====================================================================
+                           SORU 2 AÇIKLAMASI
+====================================================================
+Bu soruda fork(), signal(), alarm() ve kill() kullanarak bir süreç (process) yönetimi uygulaması yapmamız istendi.
+
+Öncelikle fork() ile bir child process oluşturdum.
+Child process kendi içinde sonsuz bir while döngüsüne girip her saniye ekrana bir sayaç yazdırıyor. Bu sırada dışarıdan gelebilecek SIGINT (Ctrl+C) veya SIGCONT sinyallerini yakalaması için kendi signal handler fonksiyonlarını yazdım. Child process SIGINT aldığında kapanmak yerine "devam ediliyor" şeklinde bir mesaj yazdırıp çalışmaya devam ediyor.
+
+Parent process tarafında ise ilk başta 3 saniyelik bir alarm() kurdum. Parent bir yandan 10 saniyelik genel bekleme döngüsüne girerken, arka planda her 3 saniyede bir alarm tetikleniyor. 
+
+Alarm tetiklendiğinde çalışan fonksiyon içinde:
+1. Child'a kill() fonksiyonu ile SIGSTOP yollanıp durduruluyor. (SIGSTOP handle edilemeyeceği için direkt olarak kernel tarafından durduruluyor).
+2. Parent 2 saniye uyuyup bekliyor.
+3. Uyandıktan sonra child'a tekrar SIGCONT yollayıp kaldığı yerden devam etmesini sağlıyor.
+4. Son olarak bir sonraki döngü için alarmı tekrar 3 saniye sonrasına kuruyor.
+
+Parent'taki toplam 10 saniyelik bekleme bittikten sonra, child'a önce SIGINT gönderdim. Child'ın mesajı ekrana basabilmesi için 1 saniye bekledim ve ardından SIGTERM sinyali göndererek child process'i tamamen kapattım.
+
+En sonunda parent process içinde wait(NULL) kullanarak child'ın işini tamamen bitirmesini bekledim. Bu sayede child'ın sistemde "zombi process" olarak kalmasını ve bellek tüketmesini engellemiş oldum.
+
+Örnek Çıktı:
+Ana surec (Parent) basladi. PID: 3418
+[Parent 3418] 10 saniyelik zamanlayici basladi.
+[Child 3419] basladi. Sonsuz donguye giriyor...
+[Child 3419] Calisiyor... Sayac: 1
+[Child 3419] Calisiyor... Sayac: 2
+[Child 3419] Calisiyor... Sayac: 3
+
+[Parent 3418] Alarm tetiklendi! Child'a SIGSTOP yollaniyor...
+[Parent 3418] 2 saniye bekleniyor...
+[Parent 3418] Child'a SIGCONT yollaniyor...
+
+[Child 3419] Islem devam etti
+[Child 3419] Calisiyor... Sayac: 4
+[Child 3419] Calisiyor... Sayac: 5
+[Child 3419] Calisiyor... Sayac: 6
+
+[Parent 3418] Alarm tetiklendi! Child'a SIGSTOP yollaniyor...
+[Parent 3418] 2 saniye bekleniyor...
+[Parent 3418] Child'a SIGCONT yollaniyor...
+
+[Child 3419] Islem devam etti
+[Child 3419] Calisiyor... Sayac: 7
+[Child 3419] Calisiyor... Sayac: 8
+[Child 3419] Calisiyor... Sayac: 9
+
+[Parent 3418] 10 saniye doldu!
+[Parent 3418] Child'a SIGINT gonderiliyor...
+
+[Child 3419] SIGINT alindi ancak devam ediliyor...
+[Parent 3418] Child sonlandiriliyor (SIGTERM)...
+[Parent 3418] Child kapandi. Zombi process engellendi.
+[Parent 3418] Program bitti.
+
+====================================================================
+                            SONUÇ
+====================================================================
+Ödevde istenen bütün kurallara uyularak, bellek yönetimindeki detaylara (malloc/free kullanımı) ve Linux tarafındaki sinyal durumlarına dikkat edilerek kodlar tamamlanmıştır. Hata kontrolleri yapılarak kodun güvenli çalışması sağlanmıştır.
