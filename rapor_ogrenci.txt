@@ -1,0 +1,104 @@
+SİSTEM PROGRAMLAMA DERSİ ÖDEV RAPORU
+
+=========================
+SORU 1
+=========================
+
+1) Sorunun Kısa Mantığı:
+Bu soruda dinamik bellek kullanılarak matris oluşturulmuştur. Ancak matrisi 2 boyutlu ([][]) tanımlamak yerine, malloc ile tek bir blok halinde oluşturduk ve elemanların yerini sadece işaretçi (pointer) aritmetiği kullanarak bulduk.
+
+2) Algoritma Adımları:
+- Kullanıcıdan N (boyut) değerini aldım.
+- malloc ile N*N kadar int boyutunda alan açtım.
+- İç içe 2 for döngüsüyle satır ve sütunlarda gezip kullanıcıdan sayıları aldım. (Hesaplama: başlangıç_adresi + i * n + j)
+- special_sum adlı fonksiyonu çağırdım.
+- Fonksiyon içinde tek for döngüsüyle ana köşegeni (mat + i * cols + i) ve ikinci köşegeni (mat + i * cols + (cols - i - 1)) bulup topladım.
+- Ortadaki elemanı bir kere saymak için ufak bir if şartı yazdım.
+- Toplamı ekrana basıp free() ile bellek temizliği yaptım.
+
+3) Kaynak Kod:
+(Proje klasöründeki soru1.c dosyası)
+
+4) Kodun Önemli Kısımlarının Açıklaması:
+*(mat + i * cols + i) : Bu kullanım sayesinde i. satır ve i. sütundaki elemana ulaşıyoruz. Yani [i][i] demek yerine başlangıçtan (i * sutun_sayisi + i) adım ileri gidiyoruz.
+if (i != cols - i - 1) : İkinci köşegen elemanını bulurken, matrisin tam orta noktasına gelmiş miyiz diye bakıyoruz. Eğer geldiysek bunu toplamıyoruz çünkü ana köşegeni gezerken zaten toplamıştık.
+
+5) Örnek Çıktı:
+Matris boyutu (N): 3
+
+Matris elemanlarini girin:
+[0][0]: 1
+[0][1]: 2
+[0][2]: 3
+[1][0]: 4
+[1][1]: 5
+[1][2]: 6
+[2][0]: 7
+[2][1]: 8
+[2][2]: 9
+
+Matrisimiz:
+1	2	3	
+4	5	6	
+7	8	9	
+
+Kosegenlerin toplami: 25
+
+6) Rapora Eklenebilecek Öğrenci Açıklaması:
+Bu soruda dinamik bellek kullanılarak matris oluşturulmuştur. Normal dizi yöntemleri yerine baştan sona pointer hesaplaması yaparak C'nin belleğe nasıl eriştiğini pratik etmiş oldum. İki köşegeni toplarken merkez elemanın 2 kez hesaba katılmaması gerektiği kısmını if bloğu ile çözdüm.
+
+7) Çalışma Mantığı:
+Diziyi tek boyutlu açtığımız için aslında sayılar bellekte [1, 2, 3, 4, 5, 6, 7, 8, 9] olarak duruyor. Biz formülümüz sayesinde 1, 5, 9'u ve 3, 5, 7'yi çekiyoruz (5'i bir daha almayarak sonucu doğru buluyoruz).
+
+
+=========================
+SORU 2
+=========================
+
+1) Sorunun Kısa Mantığı:
+Bu programda fork() kullanılarak çocuk süreç oluşturulmuş ve sinyaller ile süreç yönetimi gerçekleştirilmiştir. Amacımız parent'ın child sürece dışarıdan müdahale etmesini (durdurma, başlatma, öldürme) ve child'ın da gelen sinyalleri algılayabilmesini sağlamaktır.
+
+2) Algoritma Adımları:
+- pid = fork() ile çocuk süreci yarattım.
+- Çocuk süreçte signal() ile SIGINT ve SIGCONT gelirse hangi fonksiyona gideceğini belirttim.
+- Çocuk süreçte while(1) ile sonsuz bir döngü başlatıp her saniye sayacı arttırdım.
+- Parent süreçte ise signal() ile SIGALRM gelince nereye gidileceğini belirttim ve ilk alarmı alarm(3) ile kurdum.
+- Parent süreç 10 saniyelik bir uykudayken (sleep(10)), arkada alarm her 3 saniyede bir çalıyor. 
+- Alarm çaldığında parent_alarm_yakala çalışıyor; çocuğa SIGSTOP yolluyor, 2 saniye bekliyor, SIGCONT yolluyor ve yeni alarm kuruyor.
+- 10 saniye sonunda parent çocuğa SIGINT atıyor.
+- En son SIGKILL ile tamamen öldürüp işlemi kapatıyor.
+
+3) Kaynak Kod:
+(Proje klasöründeki soru2.c dosyası)
+
+4) Kodun Önemli Kısımlarının Açıklaması:
+signal(SIGINT, child_sinyal_yakala): Çocuk sürecin işletim sistemine "Bana SIGINT (kesme) gelirse programı kapatma, bu fonksiyona git" demesini sağlıyor.
+kill(pid, SIGSTOP): kill ismi yanıltıcı olsa da aslında süreci öldürmüyor, belirtilen sinyali sürece gönderiyor. SIGSTOP süreci donduruyor.
+
+5) Örnek Çıktı:
+Sayac: 1
+Sayac: 2
+Sayac: 3
+Islem devam etti
+Sayac: 4
+Sayac: 5
+Sayac: 6
+Islem devam etti
+Sayac: 7
+Sayac: 8
+Sayac: 9
+SIGINT alindi ancak devam ediliyor...
+Program bitti.
+
+6) Rapora Eklenebilecek Öğrenci Açıklaması:
+Bu programda fork() kullanılarak çocuk süreç oluşturulmuş ve sinyaller ile süreç yönetimi gerçekleştirilmiştir. Ebeveyn ve çocuk sürecin birbirinden bağımsız çalıştığını ama kill ve signal kullanarak birbirleriyle haberleşebildiklerini gördüm.
+
+7) Çalışma Mantığı:
+Çocuk hiç durmadan saymayı denerken parent onun çalışmasını belirli periyotlarla askıya alıp tekrar başlatıyor. Bu, işletim sistemindeki CPU zamanlamasına (scheduling) benzer bir kontrol sağlıyor.
+
+=========================
+MAKEFILE KULLANIMI
+=========================
+Terminalde dosyaları derlemek için proje klasörünün içindeyken "make" yazmamız yeterlidir.
+Çalıştırmak için "./soru1" veya "./soru2" yazarız.
+İşimiz bittiğinde oluşturulan gereksiz exe dosyalarını silmek için "make clean" kullanırız.

@@ -1,72 +1,69 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Sadece pointer aritmetigi ile ana ve yan kosegen toplamini bulan fonksiyon
+// köşegenleri toplayan fonksiyon
 int special_sum(int *mat, int rows, int cols) {
-    int sum = 0;
+    int toplam = 0;
     int i;
     
-    // Matrisin satir sayisi kadar donuyoruz
+    // tek döngü ile köşegenlerde geziyoruz
     for (i = 0; i < rows; i++) {
-        // Ana kosegen elemani (i, i)
-        sum += *(mat + (i * cols) + i);
+        // ana köşegen elemanı (i,i)
+        toplam += *(mat + i * cols + i);
         
-        // Yan kosegen elemani (i, cols - 1 - i)
-        sum += *(mat + (i * cols) + (cols - 1 - i));
+        // ikinci köşegen elemanı
+        // i=0 ise cols-1'e bakar vs.
+        if (i != cols - i - 1) { // ortadaki eleman iki kere sayılmasın diye
+            toplam += *(mat + i * cols + (cols - i - 1));
+        }
     }
     
-    // Matris boyutu tek sayiysa, ortadaki elemani iki kere toplamis oluyoruz.
-    // Bu yuzden ortadaki elemani toplamdan bir kez cikariyoruz.
-    if (rows % 2 != 0 && rows == cols) {
-        int center = rows / 2;
-        sum -= *(mat + (center * cols) + center);
-    }
-    
-    return sum;
+    return toplam;
 }
 
 int main() {
     int n, i, j;
-    int *mat = NULL;
+    int *matris;
+    int sonuc;
     
-    printf("Matris boyutu (N) giriniz (NxN icin): ");
+    // kullanıcıdan N değeri alıyoruz
+    printf("Matris boyutu (N): ");
     scanf("%d", &n);
     
-    if (n <= 0) {
-        printf("Hata: Gecersiz boyut girdiniz.\n");
+    // tek boyutlu blok olarak yer açıyoruz (malloc ile)
+    matris = (int*)malloc(n * n * sizeof(int));
+    
+    if (matris == NULL) {
+        printf("Bellek hatasi!\n");
         return 1;
     }
     
-    // N*N boyutunda tek boyutlu dizi icin malloc ile yer ayiriyoruz
-    mat = (int *)malloc(n * n * sizeof(int));
-    if (mat == NULL) { 
-        printf("Bellek ayrilamadi.\n");
-        return 1;
-    }
-    
-    printf("\nLutfen %dx%d matrisin elemanlarini giriniz:\n", n, n);
+    printf("\nMatris elemanlarini girin:\n");
+    // döngü ile elemanları alıyoruz
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
-            printf("Eleman [%d][%d]: ", i, j);
-            // Sadece pointer aritmetigi kullaniyoruz, [][] kullanmak yasak
-            scanf("%d", (mat + (i * n) + j)); 
+            printf("[%d][%d]: ", i, j);
+            // pointer ile adres hesaplayıp scanf'e veriyoruz
+            scanf("%d", (matris + i * n + j));
         }
     }
     
-    printf("\nGirilen Matris:\n");
+    // matrisi ekranda görelim
+    printf("\nMatrisimiz:\n");
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
-            printf("%d\t", *(mat + (i * n) + j));
+            printf("%d\t", *(matris + i * n + j));
         }
         printf("\n");
     }
     
-    // Fonksiyonu cagirip sonucu yazdiriyoruz
-    int sonuc = special_sum(mat, n, n);
-    printf("\nAna ve Yan Kosegenlerin Toplami: %d\n", sonuc);
+    // fonksiyonu çağırıyoruz
+    sonuc = special_sum(matris, n, n);
     
-    // Bellek sizintisi olmamasi icin isimiz bitince free yapiyoruz
-    free(mat);
+    printf("\nKosegenlerin toplami: %d\n", sonuc);
+    
+    // işimiz bitti temizleyelim
+    free(matris);
     
     return 0;
 }

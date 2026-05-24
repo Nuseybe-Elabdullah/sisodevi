@@ -3,105 +3,82 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
-// Parent'in child PID'sine alarm handler icinden ulasabilmesi icin global yaptik
-pid_t child_pid = -1;
+int sayac = 1;
+pid_t pid; 
 
-// Child process icin SIGINT yakalayici fonksiyon
-void child_sigint_handler(int sig) {
-    // Sinyal parametresini kullanmadigimiz icin warning vermesin diye yazdik
-    (void)sig; 
-    printf("\n[Child %d] SIGINT alindi ancak devam ediliyor...\n", getpid());
+// sinyal yakalama kısmı
+void child_sinyal_yakala(int sig) {
+    if (sig == SIGINT) {
+        printf("SIGINT alindi ancak devam ediliyor...\n");
+    } 
+    else if (sig == SIGCONT) {
+        printf("Islem devam etti\n");
+    }
 }
 
-// Child process icin SIGCONT yakalayici fonksiyon
-void child_sigcont_handler(int sig) {
-    (void)sig; 
-    printf("\n[Child %d] Islem devam etti\n", getpid());
-}
-
-// Parent process icin alarm sinyali yakalayici fonksiyon
-void parent_alarm_handler(int sig) {
-    (void)sig; 
-    
-    if (child_pid > 0) {
-        printf("\n[Parent %d] Alarm tetiklendi! Child'a SIGSTOP yollaniyor...\n", getpid());
-        kill(child_pid, SIGSTOP); // Child'i durdur
+// alarm gelince çalışacak yer
+void parent_alarm_yakala(int sig) {
+    if (sig == SIGALRM) {
+        // child process'i durduruyoruz
+        kill(pid, SIGSTOP);
         
-        printf("[Parent %d] 2 saniye bekleniyor...\n", getpid());
-        sleep(2); // Parent burada 2 saniye uyur
+        // 2 saniye bekliyoruz
+        sleep(2);
         
-        printf("[Parent %d] Child'a SIGCONT yollaniyor...\n", getpid());
-        kill(child_pid, SIGCONT); // Child'i kaldigi yerden devam ettir
+        // tekrar devam ettiriyoruz
+        kill(pid, SIGCONT);
         
-        // Dongunun devam etmesi icin sonraki alarmi kuruyoruz
+        // 3 saniye sonra tekrar alarm çalması için kuruyoruz
         alarm(3);
     }
 }
 
 int main() {
-    printf("Ana surec (Parent) basladi. PID: %d\n", getpid());
     
-    // Child process olusturuyoruz
-    child_pid = fork();
+    // fork ile child process yaratıyoruz
+    pid = fork();
     
-    if (child_pid < 0) { 
-        perror("fork basarisiz");
+    if (pid < 0) {
+        printf("Fork hatasi!\n");
         return 1;
     }
     
-    if (child_pid == 0) {
-        // --- CHILD PROCESS ---
+    // çocuk süreç
+    if (pid == 0) {
+        // sinyalleri yakalayacağımız fonksiyonu signal ile atıyoruz
+        signal(SIGINT, child_sinyal_yakala);
+        signal(SIGCONT, child_sinyal_yakala);
         
-        // Child'in kendi sinyal yakalayicilarini ayarliyoruz
-        signal(SIGINT, child_sigint_handler);
-        signal(SIGCONT, child_sigcont_handler);
-        
-        int counter = 1;
-        printf("[Child %d] basladi. Sonsuz donguye giriyor...\n", getpid());
-        
-        // Her saniye sayaci ekrana yazdiran sonsuz dongu
+        // sonsuz döngü
         while(1) {
-            printf("[Child %d] Calisiyor... Sayac: %d\n", getpid(), counter++);
-            sleep(1); 
+            printf("Sayac: %d\n", sayac);
+            sayac++;
+            sleep(1); // 1 saniye bekletiyoruz
         }
     } 
+    // ebeveyn süreç
     else {
-        // --- PARENT PROCESS ---
+        // alarm sinyalini yakala
+        signal(SIGALRM, parent_alarm_yakala);
         
-        // Parent icin alarm sinyali handler'ini atiyoruz
-        signal(SIGALRM, parent_alarm_handler);
-        
-        // Ilk alarmi 3 saniye sonrasina kuruyoruz
+        // ilk alarmı 3 saniyeye kuruyoruz
         alarm(3);
         
-        int time_left = 10;
-        printf("[Parent %d] 10 saniyelik zamanlayici basladi.\n", getpid());
+        // 10 saniye uyuyarak çalışmasını izliyoruz
+        sleep(10);
         
-        // 10 saniye boyunca bekle. Eger sinyal gelip sleep'i keserse kalan sureyi dondurur.
-        while (time_left > 0) {
-            time_left = sleep(time_left);
-        }
+        // süremiz doldu, SIGINT atıyoruz
+        kill(pid, SIGINT);
         
-        printf("\n[Parent %d] 10 saniye doldu!\n", getpid());
-        
-        // Child'a SIGINT gonderiyoruz (kapanmayacak, sadece mesaj verecek)
-        printf("[Parent %d] Child'a SIGINT gonderiliyor...\n", getpid());
-        kill(child_pid, SIGINT);
-        
-        // Child'in ekrana mesaji yazmasi icin ufak bir bekleme
+        // yazının çıkması için kısa bekleme
         sleep(1);
         
-        // Child'i gercekten kapatmak icin SIGTERM kullaniyoruz
-        printf("[Parent %d] Child sonlandiriliyor (SIGTERM)...\n", getpid());
-        kill(child_pid, SIGTERM);
+        // en son tamamen sonlandırıp çıkıyoruz
+        kill(pid, SIGKILL);
         
-        // Zombi process olmamasi icin child'in tamamen kapanmasini bekliyoruz
-        wait(NULL);
-        printf("[Parent %d] Child kapandi. Zombi process engellendi.\n", getpid());
-        
-        printf("[Parent %d] Program bitti.\n", getpid());
+        printf("Program bitti.\n");
+        return 0;
     }
     
     return 0;

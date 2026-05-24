@@ -1,0 +1,56 @@
+Word raporuna koyulacak örnek ekran çıktıları ve komutlar:
+
+====================
+KOMUT İŞLETİMİ
+====================
+$ make
+gcc soru1.c -o soru1
+gcc soru2.c -o soru2
+
+====================
+SORU 1 ÇALIŞTIRMA
+====================
+$ ./soru1
+Matris boyutu (N): 3
+
+Matris elemanlarini girin:
+[0][0]: 1
+[0][1]: 2
+[0][2]: 3
+[1][0]: 4
+[1][1]: 5
+[1][2]: 6
+[2][0]: 7
+[2][1]: 8
+[2][2]: 9
+
+Matrisimiz:
+1       2       3
+4       5       6
+7       8       9
+
+Kosegenlerin toplami: 25
+
+====================
+SORU 2 ÇALIŞTIRMA
+====================
+$ ./soru2
+Sayac: 1
+Sayac: 2
+Sayac: 3
+Islem devam etti
+Sayac: 4
+Sayac: 5
+Sayac: 6
+Islem devam etti
+Sayac: 7
+Sayac: 8
+Sayac: 9
+SIGINT alindi ancak devam ediliyor...
+Program bitti.
+
+====================
+TEMİZLEME
+====================
+$ make clean
+rm -f soru1 soru2
